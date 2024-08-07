@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:redis="http://www.mulesoft.org/schema/mule/redis"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/redis http://www.mulesoft.org/schema/mule/redis/current/mule-redis.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="bd00c9d1-e93f-4c18-ac48-9ed689ead6e4">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<redis:redis-config name="Redis_Redis" doc:name="Redis Redis" doc:id="4262937b-e276-442b-ba35-790485a37c84" >
+		<redis:nonclustered-connection host="redis-12354.c309.us-east-2-1.ec2.redns.redis-cloud.com" port="12354" password="DQGZgsqtsdRnbzFiYlpFAkI1E7aPPleT" />
+	</redis:redis-config>
+	
+	<flow name="redis_integrationFlow" doc:id="572990e2-f45d-402a-bfd9-d16608e3bb36" >
+		<http:listener doc:name="Listener" doc:id="29844def-09cb-45e9-90b7-4263b5c44a17" config-ref="HTTP_Listener_config" path="/get"/>
+		<logger level="INFO" doc:name="Logger" doc:id="a97939b2-03c2-4c6e-9821-5b66ae2da05c" message='"Get API Called"'/>
+		<redis:get doc:name="Get" doc:id="a6efbe1b-8f20-4048-9aa9-732ed32d8f65" config-ref="Redis_Redis" key="doc1"/>
+		<logger level="INFO" doc:name="Logger" doc:id="5b1657cc-308e-430e-99aa-5d7e7453b30e" message='"Get Redis Called"'/>
+	</flow>
+	<flow name="redis_integrationFlow1" doc:id="ca85f3a3-c3ca-4653-9567-72057fb91773" >
+		<http:listener doc:name="Listener" doc:id="e523a497-1cc7-4234-922d-0ae1edc72237" config-ref="HTTP_Listener_config" path="/del"/>
+		<logger level="INFO" doc:name="Logger" doc:id="7fd10ef6-8b71-48d1-b414-67742c011058" message='"Delete API Called"'/>
+		<redis:del doc:name="Del" doc:id="d7cacfb8-b7e9-49e6-ab5d-5bca5d1d8446" config-ref="Redis_Redis" key="doc1"/>
+		<logger level="INFO" doc:name="Logger" doc:id="afda6e0b-8a1d-42d0-b3ef-fef6f40feddc" message='"Del Redis Called"'/>
+	</flow>
+	<flow name="redis_insert_Flow" doc:id="6ecbb9a9-4b2b-420a-85ae-0f935d0fc638" >
+		<http:listener doc:name="Listener" doc:id="0bbf2675-d982-45bd-8c05-9ccb704606bd" config-ref="HTTP_Listener_config" path="/base"/>
+		<logger level="INFO" doc:name="Logger" doc:id="5bf5b3cf-8c1a-47f7-9c0b-dfc4057f3765"/>
+		<ee:transform doc:name="Transform Message" doc:id="de7f10a1-1a0c-4f84-9d8c-4acff9701682" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<redis:set doc:id="ceed1435-c682-45f6-a2bf-481252cc9147" config-ref="Redis_Redis" key="doc1"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ddb7cac3-72a7-4e20-8429-54d0eb1f0e0e"/>
+	</flow>
+	<flow name="set_operationFlow" doc:id="70917e00-edfc-41ae-8f4c-83b4cebd29e4" >
+		<http:listener doc:name="Listener" doc:id="c9634325-108f-4d37-b76f-1e0329693f36" config-ref="HTTP_Listener_config" path="/expire"/>
+		<logger level="INFO" doc:name="Logger" doc:id="c23d9f00-f282-48a9-b5dc-41118cd6da8b" message='"Expire API Called"'/>
+		<redis:expire doc:name="Expire" doc:id="371e2a43-997b-4f51-9b81-854ba54eb034" config-ref="Redis_Redis" key="doc1" seconds="30000"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d6b9fa01-97d6-4343-891d-ad2e1f8752e1" message='"Expire Redis Called"'/>
+	</flow>
+	<flow name="amazon_s3_integrationFlow" doc:id="22eca93f-d6a4-43f3-bb25-e8d90c13d99a" >
+		<http:listener doc:name="Listener" doc:id="29135b86-260d-4173-8920-ca160ba5d6d6" config-ref="HTTP_Listener_config" path="/ifexist" />
+		<logger level="INFO" doc:name="Logger" doc:id="e717375c-a409-4c41-8c1f-ad6079079130" message='"Exist API called"' />
+		<redis:exists doc:name="Exists" doc:id="f4803088-81ee-4518-8ed4-49c7c53972a0" key="doc1" config-ref="Redis_Redis"/>
+		<logger level="INFO" doc:name="Logger1" doc:id="fa05ab6f-ed53-47c8-9e2f-0e57765ffe51" message='"Exist Redis called"'/>
+	</flow>
+	
+</mule>

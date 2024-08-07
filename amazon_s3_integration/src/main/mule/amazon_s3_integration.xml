@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:redis="http://www.mulesoft.org/schema/mule/redis" xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
+http://www.mulesoft.org/schema/mule/redis http://www.mulesoft.org/schema/mule/redis/current/mule-redis.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="5b3331fb-643a-4833-b55e-33652accb6b2">
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+	<s3:config name="Amazon_S3_Configuration" doc:name="Amazon S3 Configuration" doc:id="6ebcb3fd-e61e-4973-9457-4066bebb28d0" >
+		<s3:connection accessKey="#[attributes.headers.accesskey]" secretKey="#[attributes.headers.secretkey]" region="#[attributes.headers.region]"/>
+	</s3:config>
+	<flow name="insertflow" doc:id="d63898e9-d044-4654-8bd5-3aeba8e237a6" >
+		<http:listener doc:name="Listener" doc:id="f2c39388-1418-4cdd-b25e-d3b7911ba7ad" config-ref="HTTP_Listener_config" path="/insert"/>
+		<s3:put-object doc:name="Put Object" doc:id="c770df57-b761-46bf-91a0-2d44332d1258" config-ref="Amazon_S3_Configuration" bucketName="#[payload.bucketname]" key="#[payload.objectkey]" />
+		<logger level="INFO" doc:name="Logger" doc:id="38e9533a-0950-4fe0-bb01-315bf9701a69" message="Put Object Called" />
+	</flow>
+	<flow name="insert_flow" doc:id="b9a9854b-bf60-403c-a755-9f1c7a80c7c0" >
+		<http:listener doc:name="Listener" doc:id="eec73e35-a384-44b1-af01-637b6782eee5" config-ref="HTTP_Listener_config" path="/create"/>
+		<logger level="INFO" doc:name="Logger" doc:id="c4a16693-bfda-472c-8c1b-7d51872f81c4" message="Insert_Flow Called"/>
+		<s3:create-bucket doc:name="Create Bucket" doc:id="80e4ba21-49a3-4b21-9c0d-54a04289fb15" config-ref="Amazon_S3_Configuration" bucketName="#[payload.bucketname]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d612c118-98b3-4ae4-8787-d07d94358743" message="Create Bucket Called" />
+	</flow>
+	<flow name="Delete_Flow" doc:id="75ac2e49-55f2-4427-ade5-5df6cd807fa8" >
+		<http:listener doc:name="Listener" doc:id="445f6420-83e5-4c90-9ca7-d99376061f70" config-ref="HTTP_Listener_config" path="/delete"/>
+		<s3:delete-object doc:name="Delete Object" doc:id="1bc2375a-4d73-4fc0-8432-88537169d6eb" config-ref="Amazon_S3_Configuration" bucketName="#[payload.bucketname]" key="#[payload.objectkey]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="38608eec-9566-4527-b08b-355b4e38b258" message="Delete Object Called"/>
+	</flow>
+	<flow name="amazon_s3_integrationFlow1" doc:id="573f1b3b-1807-4b37-b1cc-6d6f55bbff58" >
+		<http:listener doc:name="Listener" doc:id="89210c69-56e1-46f7-bd09-893dc72732a2" config-ref="HTTP_Listener_config" path="/listobjects"/>
+		<s3:list-objects doc:name="List Objects" doc:id="52993258-4bb1-40f8-8328-eeab34b09a14" config-ref="Amazon_S3_Configuration" bucketName="#[payload.bucketname]" pageSize="1"/>
+		<ee:transform doc:name="Transform Message" doc:id="7df2b083-a02a-4745-a6d5-468ff3e1462e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="amazon_s3_integrationFlow" doc:id="7c7299b4-3b93-4cc3-8c4f-3a6f5ee56d88" >
+		<http:listener doc:name="Listener" doc:id="a9b6e95d-472e-4c86-bf91-f0d386173b3e" config-ref="HTTP_Listener_config" path="/listallbucket"/>
+		<s3:list-buckets doc:name="List Buckets" doc:id="337dc91c-09fc-4865-96c6-c9ecad7bbdf0" config-ref="Amazon_S3_Configuration"/>
+		<ee:transform doc:name="Transform Message" doc:id="15fed4e5-fe70-4deb-93fd-9900bb4cbcdf">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="9222504b-8dbd-420d-a7e8-c9948489b630" message="#[payload]"/>
+	</flow>
+	<flow name="viewflow" doc:id="092d3561-2993-4971-9c18-8c56651190de" >
+		<http:listener doc:name="Listener" doc:id="dce6d1c4-a6ae-44bb-b433-600a8981a738" config-ref="HTTP_Listener_config" path="/show"/>
+		<logger level="INFO" doc:name="Logger" doc:id="01f61139-7335-4480-a594-666427313494" message="GetMethodCalled"/>
+		<s3:get-object doc:name="Get Object" doc:id="03a78fb1-4a2e-48fa-890d-2fa628367f3b" config-ref="Amazon_S3_Configuration" bucketName="#[payload.bucketname]" key="#[payload.objectkey]"/>
+	</flow>
+</mule>
